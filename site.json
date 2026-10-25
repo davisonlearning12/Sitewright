@@ -1,0 +1,20 @@
+{
+  "title": "My test site",
+  "accent": "#1f4fd8",
+  "pages": [
+    {
+      "name": "Home",
+      "blocks": [
+        {
+          "type": "hero",
+          "title": "Welcome",
+          "sub": "Testing a website creation."
+        },
+        {
+          "type": "text",
+          "html": "I wonder if it has worked?"
+        }
+      ]
+    }
+  ]
+}
