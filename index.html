@@ -43,14 +43,14 @@ dialog input{width:100%;padding:7px;border:1px solid var(--line);border-radius:6
 <h3 style="margin-top:0">GitHub settings</h3>
 <label>Personal access token (fine-grained, Contents + Pages + Administration: read/write)</label><input id="tok" type="password" autocomplete="off">
 <label>Repository (owner/name) – created if it doesn’t exist</label><input id="repo" placeholder="yourname/my-site">
-<p style="font-size:12px;color:var(--mute)">Stored only in this browser tab’s session and sent only to api.github.com.</p>
-<div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">Cancel</button><button class="p" value="ok">Save</button></div>
+<p style="font-size:12px;color:var(--mute)">Saved in this browser only, so you stay signed in, and sent only to api.github.com. Use Forget token on a shared computer.</p>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button value="forget">Forget token</button><button value="cancel">Cancel</button><button class="p" value="ok">Save</button></div>
 </form></dialog>
 
 <script>
 let S={title:"My site",accent:"#1f4fd8",pages:[{name:"Home",blocks:[{type:"hero",title:"Welcome",sub:"Click any text to edit it."}]}]};
 let cur=0,imgs={};const $=id=>document.getElementById(id);
-const cfg={get tok(){try{return sessionStorage.getItem("tok")||""}catch(e){return ""}},get repo(){try{return localStorage.getItem("repo")||""}catch(e){return ""}}};
+const cfg={get tok(){try{return localStorage.getItem("tok")||""}catch(e){return ""}},get repo(){try{return localStorage.getItem("repo")||""}catch(e){return ""}}};
 const say=t=>$("msg").textContent=t, esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const slug=(p,i)=>i===0?"index.html":p.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".html";
 
@@ -84,11 +84,11 @@ $("stitle").oninput=e=>S.title=e.target.value;$("sacc").oninput=e=>{S.accent=e.t
 
 /* ---- GitHub ---- */
 const gh=async(path,opt={})=>{const r=await fetch("https://api.github.com"+path,{...opt,headers:{Authorization:"Bearer "+cfg.tok,Accept:"application/vnd.github+json","Content-Type":"application/json"}});
- if(!r.ok&&!opt.soft){const t=await r.json().catch(()=>({}));throw new Error(r.status+": "+(t.message||r.statusText))}return r.status===204?{}:r.json().catch(()=>({status:r.status}))};
+ if(!r.ok&&!opt.soft){const t=await r.json().catch(()=>({}));throw new Error(r.status+": "+(t.message||r.statusText)+(t.errors?" "+JSON.stringify(t.errors):""))}return r.status===204?{}:r.json().catch(()=>({status:r.status}))};
 const need=()=>{if(!cfg.tok||!cfg.repo.includes("/")){$("dlg").showModal();throw new Error("Add your token and repository first.")}};
 $("bset").onclick=()=>{$("tok").value=cfg.tok;$("repo").value=cfg.repo;$("dlg").showModal()};
 $("f").onsubmit=()=>{if(document.activeElement.value==="ok"||true){}};
-$("dlg").addEventListener("close",()=>{if($("dlg").returnValue==="ok"){try{sessionStorage.setItem("tok",$("tok").value.trim());localStorage.setItem("repo",$("repo").value.trim())}catch(e){}say("Settings saved.")}});
+$("dlg").addEventListener("close",()=>{if($("dlg").returnValue==="ok"){try{localStorage.setItem("tok",$("tok").value.trim());localStorage.setItem("repo",$("repo").value.trim())}catch(e){}say("Settings saved.")}else if($("dlg").returnValue==="forget"){try{localStorage.removeItem("tok")}catch(e){}say("Token removed from this browser.")}});
 
 function pageHTML(p,i){const nav=S.pages.map((q,j)=>`<a href="${slug(q,j)}">${esc(q.name)}</a>`).join("");
  return `<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(p.name)} – ${esc(S.title)}</title><style>${siteCSS(S.accent)}</style></head><body><nav><a href="index.html">${esc(S.title)}</a>${nav}</nav><main>${p.blocks.map(b=>blockHTML(b,false)).join("\n")}</main></body></html>`}
@@ -98,8 +98,8 @@ $("bpub").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Chec
  if(repo.status===404||!repo.default_branch){repo=await gh("/user/repos",{method:"POST",body:JSON.stringify({name:n,auto_init:true})});await new Promise(r=>setTimeout(r,2500))}
  const br=repo.default_branch||"main";say("Uploading files…");
  const ref=await gh(`/repos/${o}/${n}/git/ref/heads/${br}`),base=(await gh(`/repos/${o}/${n}/git/commits/${ref.object.sha}`)).tree.sha;
- const files=[["site.json",JSON.stringify(S,null,2),"utf-8"],[".nojekyll","","utf-8"],...S.pages.map((p,i)=>[slug(p,i),pageHTML(p,i),"utf-8"])];
- for(const [path,d] of Object.entries(imgs))if(JSON.stringify(S).includes(path))files.push([path,d.split(",")[1],"base64"]);
+ const files=[["site.json",JSON.stringify(S,null,2),"utf-8"],[".nojekyll","\n","utf-8"],...S.pages.map((p,i)=>[slug(p,i),pageHTML(p,i),"utf-8"])];
+ for(const [path,d] of Object.entries(imgs))if(d.startsWith("data:")&&JSON.stringify(S).includes(path))files.push([path,d.split(",")[1],"base64"]);
  const tree=[];for(const [path,content,encoding] of files){const b=await gh(`/repos/${o}/${n}/git/blobs`,{method:"POST",body:JSON.stringify({content,encoding})});tree.push({path,mode:"100644",type:"blob",sha:b.sha})}
  const t=await gh(`/repos/${o}/${n}/git/trees`,{method:"POST",body:JSON.stringify({base_tree:base,tree})});
  const c=await gh(`/repos/${o}/${n}/git/commits`,{method:"POST",body:JSON.stringify({message:"Update site from Sitewright",tree:t.sha,parents:[ref.object.sha]})});
