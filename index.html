@@ -65,7 +65,7 @@ function blockHTML(b,edit){
  if(b.type==="button")return `<p><a class="btn" href="${esc(b.url||"#")}"${edit?' onclick="return false"':""}><span${e} data-f="label">${esc(b.label)}</span></a></p>`;
  return edit?`<textarea data-f="code" rows="5" style="width:100%;font:13px monospace">${esc(b.code)}</textarea>`:b.code;
 }
-const siteCSS=a=>`body{margin:0;font:18px/1.65 Georgia,serif;color:#1a1a1a;background:#fff}nav{padding:14px 28px;border-bottom:1px solid #e3e3e3;font:600 15px system-ui,sans-serif;display:flex;gap:18px;flex-wrap:wrap}nav a{color:#1a1a1a;text-decoration:none}nav a:hover{color:${a}}.hero h1{font:800 clamp(2rem,6vw,3.4rem)/1.1 system-ui,sans-serif;margin:.2em 0}.hero p{font-size:1.25rem;color:#555;margin:0}img{max-width:100%;height:auto;border-radius:6px}.btn{display:inline-block;background:${a};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font:600 16px system-ui,sans-serif}main>*{max-width:760px;margin-left:auto;margin-right:auto;padding:0 20px}main{padding:28px 0}`;
+const siteCSS=a=>`body{margin:0;font:18px/1.65 Georgia,serif;color:#1a1a1a;background:#fff}nav{padding:14px 28px;border-bottom:1px solid #e3e3e3;font:600 15px system-ui,sans-serif;display:flex;gap:18px;flex-wrap:wrap}nav a{color:#1a1a1a;text-decoration:none}nav a:hover{color:${a}}nav span{font-weight:800;margin-right:10px}.hero h1{font:800 clamp(2rem,6vw,3.4rem)/1.1 system-ui,sans-serif;margin:.2em 0}.hero p{font-size:1.25rem;color:#555;margin:0}img{max-width:100%;height:auto;border-radius:6px}.btn{display:inline-block;background:${a};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font:600 16px system-ui,sans-serif}main>*{max-width:760px;margin-left:auto;margin-right:auto;padding:0 20px}main{padding:28px 0}`;
 
 function render(){
  $("stitle").value=S.title;$("sacc").value=S.accent;
@@ -100,8 +100,8 @@ $("bset").onclick=()=>{$("tok").value=cfg.tok;$("repo").value=cfg.repo;$("dlg").
 $("f").onsubmit=()=>{if(document.activeElement.value==="ok"||true){}};
 $("dlg").addEventListener("close",()=>{if($("dlg").returnValue==="ok"){try{localStorage.setItem("tok",$("tok").value.trim());localStorage.setItem("repo",$("repo").value.trim())}catch(e){}say("Settings saved.")}else if($("dlg").returnValue==="forget"){try{localStorage.removeItem("tok")}catch(e){}say("Token removed from this browser.")}});
 
-function pageHTML(p,i){const nav=S.pages.slice(1).map((q,j)=>`<a href="${slug(q,j+1)}">${esc(q.name)}</a>`).join("");
- return `<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(p.name)} – ${esc(S.title)}</title><style>${siteCSS(S.accent)}</style></head><body><nav><a href="index.html">${esc(S.title)}</a>${nav}</nav><main>${p.blocks.map(b=>blockHTML(b,false)).join("\n")}</main></body></html>`}
+function pageHTML(p,i){const nav=S.pages.map((q,j)=>`<a href="${slug(q,j)}">${esc(q.name)}</a>`).join("");
+ return `<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(p.name)} – ${esc(S.title)}</title><style>${siteCSS(S.accent)}</style></head><body><nav><span>${esc(S.title)}</span>${nav}</nav><main>${p.blocks.map(b=>blockHTML(b,false)).join("\n")}</main></body></html>`}
 
 $("bpub").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Checking repository…");
  let repo=await gh(`/repos/${o}/${n}`,{soft:true});
