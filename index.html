@@ -29,7 +29,7 @@ dialog input{width:100%;padding:7px;border:1px solid var(--line);border-radius:6
 #msg{font-size:13px;color:var(--mute);max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}aside{border-right:0;border-bottom:1px solid var(--line);max-height:30vh}header{grid-column:1}}
 </style></head><body>
-<header><h1>Sitewright</h1><span id="msg"></span><button id="bset">GitHub settings</button><button id="bload">Load site</button><button id="bpub" class="p">Publish</button></header>
+<header><h1>Sitewright</h1><span id="msg"></span><button id="bset">GitHub settings</button><button id="bload">Load site</button><button id="bclean">Clean up</button><button id="bpub" class="p">Publish</button></header>
 <aside>
 <h2>Site title</h2><input id="stitle" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit">
 <h2>Accent colour</h2><input id="sacc" type="color" value="#1f4fd8">
@@ -39,6 +39,9 @@ dialog input{width:100%;padding:7px;border:1px solid var(--line);border-radius:6
 </aside>
 <main><div id="site"></div></main>
 
+<dialog id="cdlg"><form method="dialog"><h3 style="margin-top:0">Stale pages</h3>
+<p style="font-size:13px;color:var(--mute)">These pages are in your repo but no longer in the editor, usually after a rename or delete. Open one to check it, tick the ones to remove, then delete. Deleted files can be restored from your repo’s history.</p>
+<div id="stale"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button value="cancel">Close</button><button class="p" value="del">Delete ticked</button></div></form></dialog>
 <dialog id="dlg"><form method="dialog" id="f">
 <h3 style="margin-top:0">GitHub settings</h3>
 <label>Personal access token (fine-grained, Contents + Pages + Administration: read/write)</label><input id="tok" type="password" autocomplete="off">
@@ -66,7 +69,7 @@ const siteCSS=a=>`body{margin:0;font:18px/1.65 Georgia,serif;color:#1a1a1a;backg
 
 function render(){
  $("stitle").value=S.title;$("sacc").value=S.accent;
- $("pages").innerHTML=S.pages.map((p,i)=>`<div class="pg"><button data-p="${i}" class="${i===cur?"on":""}">${esc(p.name)}</button>${S.pages.length>1?`<button data-d="${i}" aria-label="Delete page ${esc(p.name)}">×</button>`:""}</div>`).join("");
+ $("pages").innerHTML=S.pages.map((p,i)=>`<div class="pg"><button data-p="${i}" title="Double-click to rename" class="${i===cur?"on":""}">${esc(p.name)}</button>${S.pages.length>1?`<button data-d="${i}" aria-label="Delete page ${esc(p.name)}">×</button>`:""}</div>`).join("");
  const bl=S.pages[cur].blocks;
  $("site").innerHTML=`<style>${siteCSS(S.accent).replace(/main>\*/g,".blk>*")}.blk>*{padding:0!important;max-width:none!important}</style>`+(bl.length?bl.map((b,i)=>`<div class="blk" data-i="${i}"><div class="tools"><button data-m="-1" aria-label="Move up">↑</button><button data-m="1" aria-label="Move down">↓</button><button data-x aria-label="Delete block">×</button></div>${blockHTML(b,true)}</div>`).join(""):`<div class="empty">This page is empty. Add a block from the left.</div>`);
 }
@@ -79,6 +82,7 @@ document.querySelector(".pal").onclick=ev=>{const t=ev.target.dataset.t;if(!t)re
  bl.push({hero:{type:"hero",title:"A new heading",sub:"A short line beneath it."},text:{type:"text",html:"Write something…"},button:{type:"button",label:"Click me",url:"https://"},html:{type:"html",code:"<p>Your own HTML goes here.</p>"}}[t]);render();
  if(t==="button"){const u=prompt("Where should the button link to?","https://");if(u)bl[bl.length-1].url=u}};
 $("pages").onclick=ev=>{const t=ev.target;if(t.dataset.p)cur=+t.dataset.p;if(t.dataset.d&&confirm("Delete this page?")){S.pages.splice(+t.dataset.d,1);cur=0}render()};
+$("pages").ondblclick=ev=>{const i=ev.target.dataset.p;if(i===undefined)return;const n=prompt("Rename page",S.pages[+i].name);if(n&&n.trim()){S.pages[+i].name=n.trim();render()}};
 $("addpg").onclick=()=>{const n=prompt("Page name?");if(n){S.pages.push({name:n,blocks:[]});cur=S.pages.length-1;render()}};
 $("stitle").oninput=e=>S.title=e.target.value;$("sacc").oninput=e=>{S.accent=e.target.value;render()};
 
@@ -90,7 +94,7 @@ $("bset").onclick=()=>{$("tok").value=cfg.tok;$("repo").value=cfg.repo;$("dlg").
 $("f").onsubmit=()=>{if(document.activeElement.value==="ok"||true){}};
 $("dlg").addEventListener("close",()=>{if($("dlg").returnValue==="ok"){try{localStorage.setItem("tok",$("tok").value.trim());localStorage.setItem("repo",$("repo").value.trim())}catch(e){}say("Settings saved.")}else if($("dlg").returnValue==="forget"){try{localStorage.removeItem("tok")}catch(e){}say("Token removed from this browser.")}});
 
-function pageHTML(p,i){const nav=S.pages.map((q,j)=>`<a href="${slug(q,j)}">${esc(q.name)}</a>`).join("");
+function pageHTML(p,i){const nav=S.pages.slice(1).map((q,j)=>`<a href="${slug(q,j+1)}">${esc(q.name)}</a>`).join("");
  return `<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(p.name)} – ${esc(S.title)}</title><style>${siteCSS(S.accent)}</style></head><body><nav><a href="index.html">${esc(S.title)}</a>${nav}</nav><main>${p.blocks.map(b=>blockHTML(b,false)).join("\n")}</main></body></html>`}
 
 $("bpub").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Checking repository…");
@@ -112,5 +116,22 @@ $("bload").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Loa
  const br=(await gh(`/repos/${o}/${n}`)).default_branch;
  d.pages.forEach(p=>p.blocks.forEach(b=>{if(b.type==="image"&&!imgs[b.src])imgs[b.src]=`https://raw.githubusercontent.com/${o}/${n}/${br}/${b.src}`}));
  S=d;cur=0;render();say("Loaded.")}catch(e){say("Couldn’t load site.json: "+e.message)}};
+
+$("bclean").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Checking for stale pages…");
+ const br=(await gh(`/repos/${o}/${n}`)).default_branch;
+ const ref=await gh(`/repos/${o}/${n}/git/ref/heads/${br}`),tsha=(await gh(`/repos/${o}/${n}/git/commits/${ref.object.sha}`)).tree.sha;
+ const keep=S.pages.map((p,i)=>slug(p,i));
+ const st=(await gh(`/repos/${o}/${n}/git/trees/${tsha}`)).tree.filter(x=>x.type==="blob"&&x.path.endsWith(".html")&&!keep.includes(x.path));
+ if(!st.length){say("No stale pages. Your repo matches the editor.");return}
+ $("stale").innerHTML=st.map(x=>`<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" value="${esc(x.path)}" style="width:auto"><a href="https://${o}.github.io/${n}/${esc(x.path)}" target="_blank" rel="noopener">${esc(x.path)}</a></label>`).join("");
+ $("cdlg").dataset.br=br;say("");$("cdlg").showModal()}catch(e){say(e.message)}};
+$("cdlg").addEventListener("close",async()=>{if($("cdlg").returnValue!=="del")return;
+ const paths=[...document.querySelectorAll("#stale input:checked")].map(i=>i.value);if(!paths.length)return;
+ try{const [o,n]=cfg.repo.split("/"),br=$("cdlg").dataset.br;say("Deleting…");
+ const ref=await gh(`/repos/${o}/${n}/git/ref/heads/${br}`),base=(await gh(`/repos/${o}/${n}/git/commits/${ref.object.sha}`)).tree.sha;
+ const t=await gh(`/repos/${o}/${n}/git/trees`,{method:"POST",body:JSON.stringify({base_tree:base,tree:paths.map(path=>({path,mode:"100644",type:"blob",sha:null}))})});
+ const c=await gh(`/repos/${o}/${n}/git/commits`,{method:"POST",body:JSON.stringify({message:"Remove stale pages",tree:t.sha,parents:[ref.object.sha]})});
+ await gh(`/repos/${o}/${n}/git/refs/heads/${br}`,{method:"PATCH",body:JSON.stringify({sha:c.sha})});
+ say("Deleted "+paths.length+" stale file"+(paths.length>1?"s":"")+".")}catch(e){say(e.message)}});
 render();
 </script></body></html>
