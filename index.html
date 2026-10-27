@@ -26,10 +26,10 @@ main{overflow:auto;padding:20px}
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);max-width:460px;width:92%}
 dialog label{display:block;margin:10px 0 3px;font-size:13px;color:var(--mute)}
 dialog input{width:100%;padding:7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
-#msg{font-size:13px;color:var(--mute);max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ds{font-size:12px;color:var(--mute);white-space:nowrap}button:disabled{opacity:.4;cursor:default}#msg{font-size:13px;color:var(--mute);max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:700px){body{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}aside{border-right:0;border-bottom:1px solid var(--line);max-height:30vh}header{grid-column:1}}
 </style></head><body>
-<header><h1>Sitewright</h1><span id="msg"></span><button id="bprev">Preview</button><button id="bset">GitHub settings</button><button id="bload">Load site</button><button id="bclean">Clean up</button><button id="bpub" class="p">Publish</button></header>
+<header><h1>Sitewright</h1><span id="ds"></span><span id="msg"></span><button id="bundo" title="Undo (Ctrl+Z)">Undo</button><button id="bredo" title="Redo (Ctrl+Shift+Z)">Redo</button><button id="bprev">Preview</button><button id="bset">GitHub settings</button><button id="bload">Load site</button><button id="bclean">Clean up</button><button id="bpub" class="p">Publish</button></header>
 <aside>
 <h2>Site title</h2><input id="stitle" style="width:100%;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit">
 <h2>Accent colour</h2><input id="sacc" type="color" value="#1f4fd8">
@@ -85,7 +85,7 @@ function blockHTML(b,edit,path){
 }
 const siteCSS=a=>`body{margin:0;font:18px/1.65 Georgia,serif;color:#1a1a1a;background:#fff}nav{padding:14px 28px;border-bottom:1px solid #e3e3e3;font:600 15px system-ui,sans-serif;display:flex;gap:18px;flex-wrap:wrap}nav a{color:#1a1a1a;text-decoration:none}nav a:hover{color:${a}}nav span{font-weight:800;margin-right:10px}.hero h1{font:800 clamp(2rem,6vw,3.4rem)/1.1 system-ui,sans-serif;margin:.2em 0}.hero p{font-size:1.25rem;color:#555;margin:0}img{max-width:100%;height:auto;border-radius:6px}.btn{display:inline-block;background:${a};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font:600 16px system-ui,sans-serif}main>*{max-width:760px;margin-left:auto;margin-right:auto;padding:0 20px}main{padding:28px 0}.cols{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:28px;align-items:start}.cols>*{min-width:0}@media(max-width:640px){.cols{grid-template-columns:1fr}}h2{font:700 1.6rem/1.2 system-ui,sans-serif;margin:.3em 0}`;
 
-function render(){$("site").hidden=pv;$("pvf").hidden=!pv;$("bprev").textContent=pv?"Back to editing":"Preview";if(pv)preview();
+function render(){$("site").hidden=pv;$("pvf").hidden=!pv;$("bprev").textContent=pv?"Back to editing":"Preview";if(pv)preview();snapSoon();
  $("stitle").value=S.title;$("sacc").value=S.accent;
  $("pages").innerHTML=S.pages.map((p,i)=>`<div class="pg"><button data-p="${i}" title="Double-click to rename" class="${i===cur?"on":""}">${esc(p.name)}</button><button data-r="${i}" aria-label="Rename page ${esc(p.name)}" title="Rename">✎</button>${S.pages.length>1?`<button data-d="${i}" aria-label="Delete page ${esc(p.name)}">×</button>`:""}</div>`).join("");
  const bl=S.pages[cur].blocks;
@@ -97,7 +97,7 @@ function addTo(t,list){pv=false;
  const b=mk(t);if(t==="button"){const u=prompt("Where should the button link to?","https://");if(u)b.url=u}
  list.push(b);render()}
 $("site").addEventListener("input",ev=>{const t=ev.target,f=t.dataset.f,blk=t.closest(".blk");if(!f||!blk)return;
- const {list,i}=ref(blk.dataset.path),b=list[i];b[f]=f==="html"?t.innerHTML:(f==="code"?t.value:t.textContent)});
+ const {list,i}=ref(blk.dataset.path),b=list[i];b[f]=f==="html"?t.innerHTML:(f==="code"?t.value:t.textContent);snapSoon()});
 $("site").addEventListener("click",ev=>{const t=ev.target.closest("button");if(!t)return;
  if(t.dataset.add){addTo(t.dataset.add,colList(t.dataset.col));return}
  const blk=t.closest(".blk");if(!blk)return;
@@ -120,6 +120,26 @@ $("site").addEventListener("pointerdown",ev=>{const h=ev.target.closest("[data-r
  const mv=e=>{pct=Math.max(10,Math.min(100,Math.round((w0+e.clientX-x0)/cw*20)*5));wr.style.display="block";wr.style.maxWidth="none";wr.style.width=pct+"%";wr.querySelector("img").style.width="100%"};
  const up=()=>{h.removeEventListener("pointermove",mv);h.removeEventListener("pointerup",up);if(pct){const {list,i}=ref(blk.dataset.path);list[i].w=pct;render()}};
  h.addEventListener("pointermove",mv);h.addEventListener("pointerup",up)});
+let base=JSON.stringify(S),hist=[],pos=-1,sn,st,ready=false;
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open("sitewright",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const kv={async get(k){const d=await idb();return new Promise((res,rej)=>{const q=d.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
+ async set(k,v){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res();t.onerror=()=>rej(t.error)})}};
+function updUR(){$("bundo").disabled=pos<=0;$("bredo").disabled=pos>=hist.length-1}
+function snap(){const j=JSON.stringify(S);if(hist[pos]!==j){hist.splice(pos+1);hist.push(j);if(hist.length>100)hist.shift();pos=hist.length-1}updUR();saveDraft()}
+const snapSoon=()=>{clearTimeout(sn);sn=setTimeout(snap,400)};
+function undo(){clearTimeout(sn);snap();if(pos>0){pos--;S=JSON.parse(hist[pos]);cur=Math.min(cur,S.pages.length-1);render()}}
+function redo(){clearTimeout(sn);snap();if(pos<hist.length-1){pos++;S=JSON.parse(hist[pos]);cur=Math.min(cur,S.pages.length-1);render()}}
+function saveDraft(){if(!ready)return;clearTimeout(st);st=setTimeout(async()=>{try{
+ const js=JSON.stringify(S);if(js===base){await kv.set("draft",null);$("ds").textContent="";return}
+ const used={};for(const [k,v] of Object.entries(imgs))if(v.startsWith("data:")&&js.includes(k))used[k]=v;
+ await kv.set("draft",{S,imgs:used,t:Date.now(),repo:cfg.repo});
+ $("ds").textContent="Draft saved "+new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}catch(e){$("ds").textContent="Draft not saved"}},800)}
+$("bundo").onclick=undo;$("bredo").onclick=redo;
+document.addEventListener("keydown",e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const k=e.key.toLowerCase();if(k!=="z"&&k!=="y")return;
+ const t=e.target;if(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;e.preventDefault();(k==="y"||e.shiftKey)?redo():undo()});
+(async()=>{try{const d=await kv.get("draft");
+ if(d&&d.S){if(JSON.stringify(d.S)!==base&&confirm("Restore your unpublished draft from "+new Date(d.t).toLocaleString()+(d.repo?" ("+d.repo+")":"")+"?")){S=d.S;Object.assign(imgs,d.imgs||{});cur=0;hist=[];pos=-1;render()}else await kv.set("draft",null)}
+ }catch(e){}ready=true;snapSoon()})();
 let last={i:-1,t:0};
 const ren=i=>{const n=prompt("Rename page",S.pages[i].name);if(n&&n.trim())S.pages[i].name=n.trim();render()};
 $("pages").onclick=ev=>{const t=ev.target;
@@ -129,7 +149,7 @@ $("pages").onclick=ev=>{const t=ev.target;
   last={i,t:now};cur=i}
  if(t.dataset.d&&confirm("Delete this page?")){S.pages.splice(+t.dataset.d,1);cur=0}render()};
 $("addpg").onclick=()=>{const n=prompt("Page name?");if(n){S.pages.push({name:n,blocks:[]});cur=S.pages.length-1;render()}};
-$("stitle").oninput=e=>S.title=e.target.value;$("sacc").oninput=e=>{S.accent=e.target.value;render()};
+$("stitle").oninput=e=>{S.title=e.target.value;snapSoon()};$("sacc").oninput=e=>{S.accent=e.target.value;render()};
 
 /* ---- GitHub ---- */
 const gh=async(path,opt={})=>{const r=await fetch("https://api.github.com"+path,{...opt,headers:{Authorization:"Bearer "+cfg.tok,Accept:"application/vnd.github+json","Content-Type":"application/json"}});
@@ -154,13 +174,13 @@ $("bpub").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Chec
  const c=await gh(`/repos/${o}/${n}/git/commits`,{method:"POST",body:JSON.stringify({message:"Update site from Sitewright",tree:t.sha,parents:[ref.object.sha]})});
  await gh(`/repos/${o}/${n}/git/refs/heads/${br}`,{method:"PATCH",body:JSON.stringify({sha:c.sha})});
  await gh(`/repos/${o}/${n}/pages`,{method:"POST",soft:true,body:JSON.stringify({source:{branch:br,path:"/"}})});
- say(`Published. Live in about a minute at https://${o}.github.io/${n}/`)}catch(e){say(e.message)}};
+ base=JSON.stringify(S);saveDraft();say(`Published. Live in about a minute at https://${o}.github.io/${n}/`)}catch(e){say(e.message)}};
 
-$("bload").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Loading…");
+$("bload").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");if(JSON.stringify(S)!==base&&!confirm("Loading replaces your unpublished changes. Continue?")){say("");return}say("Loading…");
  const f=await gh(`/repos/${o}/${n}/contents/site.json`);const d=JSON.parse(decodeURIComponent(escape(atob(f.content.replace(/\n/g,"")))));
  const br=(await gh(`/repos/${o}/${n}`)).default_branch;
  const walk=l=>l.forEach(b=>{if(b.type==="image"&&b.src&&!imgs[b.src])imgs[b.src]=`https://raw.githubusercontent.com/${o}/${n}/${br}/${b.src.split("/").map(encodeURIComponent).join("/")}`;if(b.cols)b.cols.forEach(walk)});d.pages.forEach(q=>walk(q.blocks));
- S=d;cur=0;render();say("Loaded.")}catch(e){say("Couldn’t load site.json: "+e.message)}};
+ S=d;cur=0;hist=[];pos=-1;base=JSON.stringify(S);render();say("Loaded.")}catch(e){say("Couldn’t load site.json: "+e.message)}};
 
 $("bclean").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Checking for stale pages…");
  const br=(await gh(`/repos/${o}/${n}`)).default_branch;
