@@ -1,5 +1,6 @@
 # Sitewright
 A simple website creator that hosts on GitHub.
+https://davisonlearning12.github.io/Sitewright/index.html
 
 Have a look at a test site made with Sitewright. 
 https://davisonlearning12.github.io/test_site/index.html
