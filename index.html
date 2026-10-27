@@ -96,7 +96,7 @@ const siteCSS0=a=>`body{margin:0;font:18px/1.65 Georgia,serif;color:#1a1a1a;back
 
 function render(){$("site").hidden=pv;$("pvf").hidden=!pv;$("bprev").textContent=pv?"Back to editing":"Preview";if(pv)preview();snapSoon();
  $("stitle").value=S.title;$("sacc").value=S.accent;$("stheme").innerHTML=Object.entries(THEMES).map(([k,v])=>`<option value="${k}"${(S.theme||"classic")===k?" selected":""}>${v.n}</option>`).join("");
- $("pages").innerHTML=S.pages.map((p,i)=>`<div class="pg"><button data-p="${i}" title="Double-click to rename" class="${i===cur?"on":""}">${esc(p.name)}</button><button data-r="${i}" aria-label="Rename page ${esc(p.name)}" title="Rename">✎</button>${S.pages.length>1?`<button data-d="${i}" aria-label="Delete page ${esc(p.name)}">×</button>`:""}</div>`).join("");
+ $("pages").innerHTML=S.pages.map((p,i)=>`<div class="pg"><button data-p="${i}" title="${i===0?"Home page (always first)":"Open page"}" class="${i===cur?"on":""}">${i===0?"⌂ ":""}${esc(p.name)}</button>${i===cur&&i>0?`<button data-pm="-1" aria-label="Move page earlier" title="Move page earlier">↑</button>`:""}${i===cur&&i<S.pages.length-1?`<button data-pm="1" aria-label="Move page later" title="Move page later">↓</button>`:""}<button data-r="${i}" aria-label="Rename page ${esc(p.name)}" title="Rename">✎</button>${S.pages.length>1?`<button data-d="${i}" aria-label="Delete page ${esc(p.name)}">×</button>`:""}</div>`).join("");
  const bl=S.pages[cur].blocks;
  $("site").innerHTML=`<style>${siteCSS(S.accent).replace("body{margin:0;","#site{").replace(/body\{/g,"#site{").replace("main{padding:28px 0}","").replace(/main>\*/g,".blk>*")}.blk>*{padding:0!important;max-width:none!important}</style>`+(bl.length?bl.map((b,i)=>wrap(b,String(i))).join(""):`<div class="empty">This page is empty. Add a block from the left.</div>`);
 }
@@ -193,10 +193,9 @@ $("stheme").onchange=e=>{S.theme=e.target.value;S.accent=THEMES[S.theme].acc;ren
 let last={i:-1,t:0};
 const ren=i=>{const n=prompt("Rename page",S.pages[i].name);if(n&&n.trim())S.pages[i].name=n.trim();render()};
 $("pages").onclick=ev=>{const t=ev.target;
+ if(t.dataset.pm){const j=cur+ +t.dataset.pm;if(j<0||j>=S.pages.length)return;[S.pages[cur],S.pages[j]]=[S.pages[j],S.pages[cur]];cur=j;render();return}
  if(t.dataset.r!==undefined)return ren(+t.dataset.r);
- if(t.dataset.p!==undefined){const i=+t.dataset.p,now=Date.now();
-  if(last.i===i&&now-last.t<500){last={i:-1,t:0};return ren(i)}
-  last={i,t:now};cur=i}
+ if(t.dataset.p!==undefined)cur=+t.dataset.p;
  if(t.dataset.d&&confirm("Delete this page?")){S.pages.splice(+t.dataset.d,1);cur=0}render()};
 $("addpg").onclick=()=>{const n=prompt("Page name?");if(n){S.pages.push({name:n,blocks:[]});cur=S.pages.length-1;render()}};
 $("stitle").oninput=e=>{S.title=e.target.value;snapSoon()};$("sacc").oninput=e=>{S.accent=e.target.value;render()};
