@@ -159,7 +159,7 @@ $("bpub").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Chec
 $("bload").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Loading…");
  const f=await gh(`/repos/${o}/${n}/contents/site.json`);const d=JSON.parse(decodeURIComponent(escape(atob(f.content.replace(/\n/g,"")))));
  const br=(await gh(`/repos/${o}/${n}`)).default_branch;
- d.pages.forEach(p=>p.blocks.forEach(b=>{if(b.type==="image"&&!imgs[b.src])imgs[b.src]=`https://raw.githubusercontent.com/${o}/${n}/${br}/${b.src}`}));
+ const walk=l=>l.forEach(b=>{if(b.type==="image"&&b.src&&!imgs[b.src])imgs[b.src]=`https://raw.githubusercontent.com/${o}/${n}/${br}/${b.src.split("/").map(encodeURIComponent).join("/")}`;if(b.cols)b.cols.forEach(walk)});d.pages.forEach(q=>walk(q.blocks));
  S=d;cur=0;render();say("Loaded.")}catch(e){say("Couldn’t load site.json: "+e.message)}};
 
 $("bclean").onclick=async()=>{try{need();const [o,n]=cfg.repo.split("/");say("Checking for stale pages…");
