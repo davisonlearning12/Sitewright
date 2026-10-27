@@ -1,6 +1,9 @@
 # Sitewright
 A simple website creator that hosts on GitHub.
 
+Have a look at a test site made with Sitewright. 
+https://davisonlearning12.github.io/test_site/index.html
+
 1. Create the repo first
 On github.com, click New repository, name it (for example my-site), and tick Add a README so the repo has a main branch. Fine-grained tokens can only be limited to repos that already exist.
 
