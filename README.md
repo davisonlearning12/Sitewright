@@ -13,7 +13,7 @@ Before you start: you need a free GitHub account. If you don’t have one, sign 
 
 3. Click Sign in with GitHub, then Authorize on the GitHub screen.
 
-4. Choose where Sitewright may save your site. On “One more step”, click Choose repositories on GitHub, pick Only select repositories, choose the repository from step 1, and click Install. You’ll be sent back to Sitewright, or you can click I’ve done this, check again.
+4. Choose where Sitewright may save your site. On “One more step”, click Choose repositories on GitHub, pick "Only select repositories", choose the repository from step 1, and click Install. You’ll be sent back to Sitewright, or you can click I’ve done this, check again.
 
 5. Pick your site. In Your sites, click your repository. It will be marked “New site”.
 
