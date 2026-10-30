@@ -55,7 +55,7 @@ dialog input{width:100%;padding:7px;border:1px solid var(--line);border-radius:6
 let S={title:"My site",accent:"#1f4fd8",pages:[{name:"Home",blocks:[{type:"hero",title:"Welcome",sub:"Click any text to edit it."}]}]};
 let cur=0,imgs={};const $=id=>document.getElementById(id);
 const cfg={get tok(){try{return localStorage.getItem("tok")||""}catch(e){return ""}},get repo(){try{return localStorage.getItem("repo")||""}catch(e){return ""}}};
-const say=t=>$("msg").textContent=t, esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const say=t=>{$("msg").textContent=t;$("msg").title=t}, esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const slug=(p,i)=>i===0?"index.html":p.name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+".html";
 
 function ref(path){const a=path.split(".").map(Number);let list=S.pages[cur].blocks,i=a[0];for(let k=1;k<a.length;k+=2){list=list[i].cols[a[k]];i=a[k+1]}return {list,i}}
@@ -172,7 +172,7 @@ function saveDraft(){if(!ready)return;clearTimeout(st);st=setTimeout(async()=>{t
 $("bundo").onclick=undo;$("bredo").onclick=redo;
 document.addEventListener("keydown",e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const k=e.key.toLowerCase();if(k!=="z"&&k!=="y")return;
  const t=e.target;if(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))return;e.preventDefault();(k==="y"||e.shiftKey)?redo():undo()});
-(async()=>{try{const d=await kv.get("draft");
+(async()=>{try{const d=await Promise.race([kv.get("draft"),new Promise((_,rj)=>setTimeout(rj,1500))]);
  if(d&&d.S){if(JSON.stringify(d.S)!==base&&confirm("Restore your unpublished draft from "+new Date(d.t).toLocaleString()+(d.repo?" ("+d.repo+")":"")+"?")){S=d.S;Object.assign(imgs,d.imgs||{});cur=0;hist=[];pos=-1;render()}else await kv.set("draft",null)}
  }catch(e){}ready=true;snapSoon();authInit()})();
 const LB=`<div id="lb" hidden><img alt=""></div><script>(function(){var l=document.getElementById("lb"),im=l.firstChild,all=[].slice.call(document.querySelectorAll("a.gi")),i=0;function show(n){i=(n+all.length)%all.length;im.src=all[i].href;l.hidden=false}document.addEventListener("click",function(e){var a=e.target.closest("a.gi");if(a){e.preventDefault();show(all.indexOf(a))}else if(l.contains(e.target)){l.hidden=true}});document.addEventListener("keydown",function(e){if(l.hidden)return;if(e.key==="Escape")l.hidden=true;if(e.key==="ArrowRight")show(i+1);if(e.key==="ArrowLeft")show(i-1)})})();<\/script>`;
@@ -266,7 +266,7 @@ function markAct(){if(actPath===null)return;const el=$("site").querySelector('.b
 $("site").addEventListener("pointerdown",ev=>{if(ev.target.closest(".addbar"))return;const b=ev.target.closest(".blk");if(b)setAct(b.dataset.path)},true);
 $("site").addEventListener("focusin",ev=>{const b=ev.target.closest(".blk");if(b&&b.dataset.path!==actPath)setAct(b.dataset.path)});
 const APP={clientId:"Iv23li7t6ZvFlBQybYOn",worker:"https://sitewright-auth.davisonlearning12.workers.dev",redirect:"https://davisonlearning12.github.io/sitewright/",slug:"sitewright-editor"};
-let sites=null,refreshing=null;
+let sites=null,refreshing=null,authErr="";
 const loadAuth=()=>{try{return JSON.parse(localStorage.getItem("sw-auth")||"null")}catch(e){return null}};
 const authed=()=>!!(loadAuth()||cfg.tok);
 const onAppUrl=()=>location.origin===new URL(APP.redirect).origin;
@@ -281,8 +281,11 @@ async function tokenNow(){const a=loadAuth();if(!a)return cfg.tok;
   try{refreshing=refreshing||authPost("/refresh",{refresh_token:a.r}).then(saveAuth).finally(()=>{refreshing=null});return (await refreshing).t}
   catch(e){if(e instanceof TypeError)throw new Error("I couldn’t reach the sign-in service. Check your connection and try again.");signOut(true);throw new Error("Your sign-in has expired. Please sign in again.")}}
  return a.t}
+function explain(m){const k={origin_not_allowed:"The sign-in service doesn’t recognise this website. In Cloudflare, check that ALLOWED_ORIGIN is exactly "+location.origin+" (no slash on the end), then Deploy again.",worker_not_configured:"The sign-in service is missing its CLIENT_ID or CLIENT_SECRET settings in Cloudflare.",bad_verification_code:"That sign-in code was already used or has expired. Please try again.",redirect_uri_mismatch:"The Callback URL in your GitHub App must be exactly "+APP.redirect,incorrect_client_credentials:"The client secret stored in Cloudflare doesn’t match your GitHub App. Generate a new client secret in the app, then update CLIENT_SECRET in Cloudflare.",github_unreachable:"The sign-in service couldn’t reach GitHub. Please try again."};
+ if(/failed to fetch|networkerror|load failed/i.test(m))return "Sign-in failed. I couldn’t reach the sign-in service at "+APP.worker+". Check that the Worker address is right and the Worker is deployed.";
+ return "Sign-in failed. "+(k[m]||"Details: "+m)}
 function signIn(){let st;try{st=crypto.randomUUID()}catch(e){st=String(Math.random()).slice(2)+Date.now()}
- try{sessionStorage.setItem("sw-state",st)}catch(e){}
+ try{localStorage.setItem("sw-state",JSON.stringify({s:st,t:Date.now()}))}catch(e){}
  location.href="https://github.com/login/oauth/authorize?"+new URLSearchParams({client_id:APP.clientId,redirect_uri:APP.redirect,state:st})}
 async function whoAmI(){try{const u=await gh("/user");localStorage.setItem("sw-user",u.login)}catch(e){}}
 function acct(){const a=loadAuth(),on=!!(a||cfg.tok);let u="";try{u=localStorage.getItem("sw-user")||""}catch(e){}
@@ -294,6 +297,7 @@ async function loadSites(){const out=[],ins=(await gh("/user/installations")).in
  sites={installs:ins,repos:out}}
 function renderSites(err){const b=$("sbody"),a=loadAuth();let u="";try{u=localStorage.getItem("sw-user")||""}catch(e){}
  const H=t=>`<h3 style="margin-top:0">${t}</h3>`;
+ if(authErr){const m=authErr;authErr="";b.innerHTML=H("Sign-in didn’t finish")+`<p>${esc(m)}</p>${onAppUrl()?`<button type="button" class="p" data-s="signin">Try again</button>`:""}`;return}
  if(!a){
   if(cfg.tok){b.innerHTML=H("Using an access token")+`<p>Repository: <code>${esc(cfg.repo||"not set")}</code></p><button type="button" data-s="token">Change token settings</button> ${onAppUrl()?`<button type="button" class="p" data-s="signin">Sign in with GitHub instead</button>`:""}`;return}
   b.innerHTML=H("Welcome to Sitewright")+`<p>Sitewright saves your website in your own GitHub account and publishes it for free. Sign in to get started.</p>${onAppUrl()?`<button type="button" class="p" data-s="signin">Sign in with GitHub</button>`:`<p><b>Sign-in works from <code>${esc(APP.redirect)}</code>.</b> Please open Sitewright there.</p>`}<p style="font-size:13px"><a href="#" data-s="token">Use an access token instead (advanced)</a></p>`;return}
@@ -312,15 +316,15 @@ $("sbody").onclick=ev=>{const t=ev.target.closest("[data-s],[data-repo]");if(!t)
  const a=t.dataset.s;ev.preventDefault();
  if(a==="signin")signIn();else if(a==="token"){$("sdlg").close();$("bset").click()}else if(a==="refresh"){sites=null;renderSites()}else if(a==="out"){signOut();renderSites()}};
 async function authInit(){const q=new URLSearchParams(location.search),code=q.get("code");
- if(code){const st=q.get("state");let want="";try{want=sessionStorage.getItem("sw-state")||""}catch(e){}
-  const ok=(st&&want&&st===want)||(!st&&q.get("installation_id"));try{sessionStorage.removeItem("sw-state")}catch(e){}
+ if(code){const st=q.get("state");let want="";try{const w=JSON.parse(localStorage.getItem("sw-state")||"null");if(w&&Date.now()-w.t<9e5)want=w.s}catch(e){}
+  const ok=(st&&want&&st===want)||(!st&&q.get("installation_id"));try{localStorage.removeItem("sw-state")}catch(e){}
   history.replaceState(null,"",location.pathname);
-  if(ok){say("Signing in…");try{saveAuth(await authPost("/token",{code,redirect_uri:APP.redirect}));await whoAmI();sites=null;say("Signed in.")}catch(e){say("Sign-in failed: "+e.message)}}
-  else say("Sign-in couldn’t be verified. Please try again.")}
+  if(ok){say("Signing in…");try{saveAuth(await authPost("/token",{code,redirect_uri:APP.redirect}));await whoAmI();sites=null;say("Signed in.")}catch(e){console.error(e);authErr=explain(e.message)}}
+  else authErr="Sign-in couldn’t be verified. This can happen if sign-in was started in a different browser or private window. Please start again from this window."}
  else if(q.get("installation_id")){history.replaceState(null,"",location.pathname);sites=null}
  acct();
  let seen="";try{seen=sessionStorage.getItem("sw-seen")||""}catch(e){}
- if(authed()?!cfg.repo.includes("/"):!seen){try{sessionStorage.setItem("sw-seen","1")}catch(e){}openSites()}}
+ if(authErr||(authed()?!cfg.repo.includes("/"):!seen)){try{sessionStorage.setItem("sw-seen","1")}catch(e){}openSites()}}
 let last={i:-1,t:0};
 const ren=i=>{const n=prompt("Rename page",S.pages[i].name);if(n&&n.trim())S.pages[i].name=n.trim();render()};
 $("pages").onclick=ev=>{const t=ev.target;
