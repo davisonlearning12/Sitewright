@@ -1,24 +1,31 @@
 # Sitewright
 A simple website creator that hosts on GitHub.
-https://davisonlearning12.github.io/Sitewright/index.html
+https://davisonlearning12.github.io/sitewright/index.html
 
 Have a look at a test site made with Sitewright. 
 https://davisonlearning12.github.io/test_site/index.html
 
-1. Create the repo first
-On github.com, click New repository, name it (for example my-site), and tick Add a README so the repo has a main branch. Fine-grained tokens can only be limited to repos that already exist.
+Before you start: you need a free GitHub account. If you don’t have one, sign up at github.com.
 
-2. Open token settings
-Click your profile photo, then Settings. At the bottom of the left sidebar choose Developer settings, then Personal access tokens, then Fine-grained tokens.
+1. Create a home for your site. On GitHub, click the + at the top right, then New repository. Give it a short name, such as my-site, choose Public, and click Create repository.
 
-3. Generate new token
-Click Generate new token. Give it a name like Sitewright, and set an expiry (30 to 90 days is a sensible choice).
+2. Open Sitewright at https://davisonlearning12.github.io/sitewright/.
 
-4. Limit it to your site repo
-Under Repository access, choose Only select repositories and pick the repo from step 1. This keeps the token from touching anything else on your account.
+3. Click Sign in with GitHub, then Authorize on the GitHub screen.
 
-5. Set the permissions
-Under Permissions, open Repository permissions and set Contents to Read and write, and Pages to Read and write. Metadata (read) is added automatically. You don't need Administration unless you want the tool to create repos.
+4. Choose where Sitewright may save your site. On “One more step”, click Choose repositories on GitHub, pick Only select repositories, choose the repository from step 1, and click Install. You’ll be sent back to Sitewright, or you can click I’ve done this, check again.
 
-6. Generate and copy it
-Click Generate token, then copy the token that starts with github_pat_. GitHub only shows it once. Paste it into Sitewright's GitHub settings along with yourname/my-site.
+5. Pick your site. In Your sites, click your repository. It will be marked “New site”.
+
+6. Build your page. Use the buttons on the left to add headings, text, images, columns, galleries and more. Click any text to edit it. Select some words to change their size, colour, or add a link.
+
+7. Check it. Click Preview to see the page the way visitors will.
+
+8. Publish. Click Publish. A message shows your site’s address, which looks like https://yourusername.github.io/my-site/. It can take a minute or two to appear, so refresh if you see a “404” at first.
+
+9. Come back any time. Open Sitewright, sign in if it asks, and click your site in Your sites. Your pages load exactly as you left them.
+
+If something goes wrong
+
+*If the site still shows “404” after a few minutes, open your repository on GitHub, go to Settings, then Pages, choose Deploy from a branch, pick main and / (root), and save.
+*Your unpublished work is saved automatically in your browser as a draft, and Undo is always in the top bar.
