@@ -28,4 +28,5 @@ Before you start: you need a free GitHub account. If you don’t have one, sign 
 If something goes wrong
 
 *If the site still shows “404” after a few minutes, open your repository on GitHub, go to Settings, then Pages, choose Deploy from a branch, pick main and / (root), and save.
+
 *Your unpublished work is saved automatically in your browser as a draft, and Undo is always in the top bar.
